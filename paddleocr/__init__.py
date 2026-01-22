@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddlex.inference.utils.benchmark import benchmark
+# from paddlex.inference.utils.benchmark import benchmark
 
 from ._models import (
     ChartParsing,
