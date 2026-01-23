@@ -1,0 +1,228 @@
+{
+  "info": {
+    "_postman_id": "malaysia-ic-ocr-fastapi",
+    "name": "Malaysia IC OCR FastAPI",
+    "description": "Collection for testing Malaysia IC OCR FastAPI endpoints",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Health Check",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Status code is 200\", function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test(\"Response has correct structure\", function () {",
+              "    var jsonData = pm.response.json();",
+              "    pm.expect(jsonData).to.have.property('status');",
+              "    pm.expect(jsonData).to.have.property('service');",
+              "    pm.expect(jsonData).to.have.property('version');",
+              "});",
+              "",
+              "pm.test(\"Status is healthy\", function () {",
+              "    var jsonData = pm.response.json();",
+              "    pm.expect(jsonData.status).to.equal('healthy');",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:8000/api/health",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "8000",
+          "path": [
+            "api",
+            "health"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Get API Info",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Status code is 200\", function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test(\"Response contains API metadata\", function () {",
+              "    var jsonData = pm.response.json();",
+              "    pm.expect(jsonData.api_name).to.exist;",
+              "    pm.expect(jsonData.version).to.exist;",
+              "    pm.expect(jsonData.endpoints).to.be.an('object');",
+              "});",
+              "",
+              "pm.test(\"All required endpoints are documented\", function () {",
+              "    var jsonData = pm.response.json();",
+              "    pm.expect(jsonData.endpoints).to.have.property('GET /api/health');",
+              "    pm.expect(jsonData.endpoints).to.have.property('POST /api/ocr');",
+              "    pm.expect(jsonData.endpoints).to.have.property('POST /api/ocr/batch');",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:8000/api/info",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "8000",
+          "path": [
+            "api",
+            "info"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Process Single IC Image",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Status code is 200\", function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test(\"Response has success property\", function () {",
+              "    var jsonData = pm.response.json();",
+              "    pm.expect(jsonData).to.have.property('success');",
+              "    pm.expect(jsonData.success).to.be.true;",
+              "});",
+              "",
+              "pm.test(\"Response contains OCR data\", function () {",
+              "    var jsonData = pm.response.json();",
+              "    pm.expect(jsonData).to.have.property('data');",
+              "    var data = jsonData.data;",
+              "    pm.expect(data).to.have.property('ic_number');",
+              "    pm.expect(data).to.have.property('name');",
+              "    pm.expect(data).to.have.property('gender');",
+              "    pm.expect(data).to.have.property('religion');",
+              "    pm.expect(data).to.have.property('address');",
+              "    pm.expect(data).to.have.property('document_type');",
+              "});",
+              "",
+              "pm.test(\"Document type is identified\", function () {",
+              "    var jsonData = pm.response.json();",
+              "    var docType = jsonData.data.document_type;",
+              "    pm.expect(docType).to.include.oneOf(['Malaysia Identity Card', 'Unknown Document']);",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "formdata",
+          "formdata": [
+            {
+              "key": "file",
+              "type": "file",
+              "src": []
+            }
+          ]
+        },
+        "url": {
+          "raw": "http://localhost:8000/api/ocr",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "8000",
+          "path": [
+            "api",
+            "ocr"
+          ]
+        },
+        "description": "Upload an IC image (JPG, PNG) or PDF and get extracted data"
+      },
+      "response": []
+    },
+    {
+      "name": "Batch Process Multiple ICs",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Status code is 200\", function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test(\"Response has batch structure\", function () {",
+              "    var jsonData = pm.response.json();",
+              "    pm.expect(jsonData).to.have.property('success');",
+              "    pm.expect(jsonData).to.have.property('total');",
+              "    pm.expect(jsonData).to.have.property('processed');",
+              "    pm.expect(jsonData).to.have.property('results');",
+              "});",
+              "",
+              "pm.test(\"Results array contains file data\", function () {",
+              "    var jsonData = pm.response.json();",
+              "    var results = jsonData.results;",
+              "    pm.expect(results).to.be.an('array');",
+              "    if (results.length > 0) {",
+              "        pm.expect(results[0]).to.have.property('filename');",
+              "        pm.expect(results[0]).to.have.property('success');",
+              "    }",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "formdata",
+          "formdata": [
+            {
+              "key": "files",
+              "type": "file",
+              "src": []
+            }
+          ]
+        },
+        "url": {
+          "raw": "http://localhost:8000/api/ocr/batch",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "8000",
+          "path": [
+            "api",
+            "ocr/batch"
+          ]
+        },
+        "description": "Upload multiple IC images (JPG, PNG) or PDFs and get extracted data for all"
+      },
+      "response": []
+    }
+  ]
+}
