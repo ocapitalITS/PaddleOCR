@@ -182,15 +182,15 @@ def split_malay_words(text):
                    'KOTA', 'BUKIT', 'PETALING', 'SHAH', 'DAMANSARA', 'SETIAWANGSA',
                    'PUTRAJAYA', 'CYBERJAYA', 'AMPANG', 'CHERAS', 'SENTOSA', 'KEPONG',
                    'MELAYU', 'SUBANG', 'SEKSYEN', 'FELDA', 'DESA', 'ALAM', 'IDAMAN', 'LEMBAH',
-                   'PERMAI', 'INDAH']
+                   'PERMAI', 'INDAH', 'NEGERI', 'SEMBILAN', 'BINTI', 'BIN']
     
     # Common Malay names that often get merged in OCR
     malay_names = ['MUHAMMAD', 'ABDUL', 'ABDULLAH', 'AHMAD', 'MOHD', 'MOHAMED', 'MOHAMMAD',
                    'FIRDAUS', 'FARID', 'FARIS', 'FAIZ', 'FAIZAL', 'FAZL', 'HAFIZ', 'HAFIZUL',
-                   'HAKIM', 'HALIM', 'HAMID', 'HAMZAH', 'HANIF', 'HARIS', 'HARITH', 'HARUN',
+                   'HAJAR', 'HAKIM', 'HALIM', 'HAMID', 'HAMZAH', 'HANIF', 'HARIS', 'HARITH', 'HARUN',
                    'HASAN', 'HASSAN', 'HIDAYAT', 'HUSAIN', 'HUSSAIN', 'IBRAHIM', 'IDRIS',
                    'IMRAN', 'ISMAIL', 'IZZAT', 'JAFAR', 'JAMIL', 'KAMAL', 'KARIM', 'KHALID',
-                   'KHAMIS', 'MAHDI', 'MAHIR', 'MAHMUD', 'MAJID', 'MALIK', 'MANSOR', 'MARZUQI',
+                   'KHAMIS', 'KHAIRUL', 'AIMAN', 'MAHDI', 'MAHIR', 'MAHMUD', 'MAJID', 'MALIK', 'MANSOR', 'MARZUQI',
                    'MASHUD', 'MASRI', 'MUSTAFA', 'NAIM', 'NASIR', 'NASRUL', 'NAZMI', 'NOOR',
                    'NOR', 'NUR', 'NURUL', 'RAHIM', 'RAHMAN', 'RAIS', 'RAJA', 'RAMLI',
                    'RASHID', 'RAZAK', 'RAZALI', 'RIDWAN', 'ROSLAN', 'ROSLEE', 'ROSLI',
@@ -202,12 +202,29 @@ def split_malay_words(text):
                    'YUSUF', 'ZAHARI', 'ZAINAL', 'ZAINUDDIN', 'ZAKARIA', 'ZAKI', 'ZAMRI',
                    'ZULKIFLI', 'ZULKEFLI']
     
-    # Split Malay names first (longer names first to avoid partial matches)
-    for name in sorted(malay_names, key=len, reverse=True):
-        text = text.replace(name, f' {name} ')
+    # Use markers to avoid substring conflicts
+    marker_counter = 1000
+    replacements = {}
     
+    # First pass: replace names with markers
+    for name in sorted(malay_names, key=len, reverse=True):
+        if name in text:
+            marker = f"__NAME_{marker_counter}__"
+            replacements[marker] = name
+            text = text.replace(name, marker)
+            marker_counter += 1
+    
+    # Second pass: replace words with markers  
     for word in malay_words:
-        text = text.replace(word, f' {word} ')
+        if word in text:
+            marker = f"__WORD_{marker_counter}__"
+            replacements[marker] = word
+            text = text.replace(word, marker)
+            marker_counter += 1
+    
+    # Third pass: replace markers with spaced versions
+    for marker, original in replacements.items():
+        text = text.replace(marker, f' {original} ')
     
     # Restore protected words
     for word, placeholder in protected_words:
@@ -664,7 +681,10 @@ def process_ocr():
             return False
         
         # Noise words to filter out (watermarks, misread text)
-        noise_words = ['ORPHEUSCAPITAL', 'ONLY', 'SAMPLE', 'SPECIMEN', 'WATERMARK', 'COPYRIGHT', 'AKER', 'ERAJ', 'MALAY', 'SIA', 'PENT', 'GR', 'PENGENJALAN', 'SLAM', 'LALAYSI', 'Touch', 'chip', 'SEFA']
+        noise_words = ['ORPHEUSCAPITAL', 'ONLY', 'SAMPLE', 'SPECIMEN', 'WATERMARK', 'COPYRIGHT', 'AKER', 'ERAJ', 'MALAY', 'SIA', 'PENT', 'GR', 'PENGENJALAN', 'SLAM', 'LALAYSI', 'Touch', 'chip', 'SEFA', 'FAETAY', 'ROTI', 'ACAR']
+        
+        # Known OCR artifacts to remove from name
+        name_artifacts = ['FAETAY', 'ROTI', 'ACAR', 'TARIK', 'NASI', 'RICING', 'GORENG']
         
         # Filter out lines containing Chinese characters from extracted_text
         extracted_text = [line for line in extracted_text if not has_chinese(line)]
@@ -818,6 +838,15 @@ def process_ocr():
                 if name_tokens:
                     # Join tokens first
                     raw_name = ' '.join(name_tokens).strip()
+                    
+                    # Remove known OCR artifacts from name
+                    for artifact in name_artifacts:
+                        # Remove artifact if it's a separate token at the end
+                        raw_name = re.sub(rf'\s+{artifact}(?:\s|$)', ' ', raw_name)
+                        # Also remove if concatenated
+                        raw_name = raw_name.replace(artifact, '')
+                    
+                    raw_name = raw_name.strip()
                     
                     try:
                         # Fix BIN TI -> BINTI before other processing (handle both variants)
