@@ -302,6 +302,7 @@ if uploaded_file is not None:
             # Names and place names
             'NORLIYANA': 'NORLIYANA',
             'MUHAMMADFAIZ': 'MUHAMMAD FAIZ',  # Handle name concatenation
+            'MUHAMMADFIRDAUS': 'MUHAMMAD FIRDAUS',  # Handle name concatenation
             'MOHDLAMRI': 'MOHD LAMRI',
             'MOHDIRWAN': 'MOHD IRWAN',  # Handle MOHD IRWAN concatenation
             'AJAANN': 'ABDUL',  # OCR error correction
@@ -628,8 +629,8 @@ if uploaded_file is not None:
         
         # Extract Gender - look for Malay gender terms
         gender_keywords = {
-            'LELAKI': 'LELAKI (Male)',
-            'PEREMPUAN': 'PEREMPUAN (Female)',
+            'LELAKI': 'Male',
+            'PEREMPUAN': 'Female',
         }
         
         for keyword, value in gender_keywords.items():

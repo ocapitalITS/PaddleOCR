@@ -184,6 +184,28 @@ def split_malay_words(text):
                    'MELAYU', 'SUBANG', 'SEKSYEN', 'FELDA', 'DESA', 'ALAM', 'IDAMAN', 'LEMBAH',
                    'PERMAI', 'INDAH']
     
+    # Common Malay names that often get merged in OCR
+    malay_names = ['MUHAMMAD', 'ABDUL', 'ABDULLAH', 'AHMAD', 'MOHD', 'MOHAMED', 'MOHAMMAD',
+                   'FIRDAUS', 'FARID', 'FARIS', 'FAIZ', 'FAIZAL', 'FAZL', 'HAFIZ', 'HAFIZUL',
+                   'HAKIM', 'HALIM', 'HAMID', 'HAMZAH', 'HANIF', 'HARIS', 'HARITH', 'HARUN',
+                   'HASAN', 'HASSAN', 'HIDAYAT', 'HUSAIN', 'HUSSAIN', 'IBRAHIM', 'IDRIS',
+                   'IMRAN', 'ISMAIL', 'IZZAT', 'JAFAR', 'JAMIL', 'KAMAL', 'KARIM', 'KHALID',
+                   'KHAMIS', 'MAHDI', 'MAHIR', 'MAHMUD', 'MAJID', 'MALIK', 'MANSOR', 'MARZUQI',
+                   'MASHUD', 'MASRI', 'MUSTAFA', 'NAIM', 'NASIR', 'NASRUL', 'NAZMI', 'NOOR',
+                   'NOR', 'NUR', 'NURUL', 'RAHIM', 'RAHMAN', 'RAIS', 'RAJA', 'RAMLI',
+                   'RASHID', 'RAZAK', 'RAZALI', 'RIDWAN', 'ROSLAN', 'ROSLEE', 'ROSLI',
+                   'ROZMAN', 'SAAD', 'SABRI', 'SAIFUL', 'SALAHUDDIN', 'SALIM', 'SALLEH',
+                   'SAMAD', 'SAMSUDDIN', 'SANUSI', 'SHAFIQ', 'SHAHRUL', 'SHAHRIL', 'SHAMSUL',
+                   'SHARIF', 'SHUKRI', 'SIDDIQ', 'SULAIMAN', 'SYAFIQ', 'SYAHIR', 'SYAMSUL',
+                   'SYED', 'TAHIR', 'TAJUDDIN', 'TALIB', 'TAMRIN', 'TARMIZI', 'TAUFIK',
+                   'THAIB', 'UMAR', 'USMAN', 'WAHID', 'WAKI', 'YAHYA', 'YUSOF', 'YUSOFF',
+                   'YUSUF', 'ZAHARI', 'ZAINAL', 'ZAINUDDIN', 'ZAKARIA', 'ZAKI', 'ZAMRI',
+                   'ZULKIFLI', 'ZULKEFLI']
+    
+    # Split Malay names first (longer names first to avoid partial matches)
+    for name in sorted(malay_names, key=len, reverse=True):
+        text = text.replace(name, f' {name} ')
+    
     for word in malay_words:
         text = text.replace(word, f' {word} ')
     
@@ -837,8 +859,8 @@ def process_ocr():
         # Extract Gender - look for Malay gender terms
         gender = None
         gender_keywords = {
-            'LELAKI': 'LELAKI (Male)',
-            'PEREMPUAN': 'PEREMPUAN (Female)',
+            'LELAKI': 'Male',
+            'PEREMPUAN': 'Female',
         }
         
         for keyword, value in gender_keywords.items():
@@ -1314,7 +1336,27 @@ def batch_ocr():
                 gender = extract_gender(extracted_text)
                 religion = extract_religion(extracted_text)
                 address = extract_address(extracted_text, ic_number, name)
-                postcode_validation = validate_postcode(address)
+                
+                # Validate postcode
+                postcode_validation = None
+                if address:
+                    postal_code_match = re.search(r'(\d{5})', address)
+                    if postal_code_match:
+                        postal_code = postal_code_match.group(1)
+                        if postcode_state_map:
+                            if postal_code in postcode_state_map:
+                                correct_state = postcode_state_map[postal_code]
+                                postcode_validation = {
+                                    'postcode': postal_code,
+                                    'state': correct_state,
+                                    'valid': True
+                                }
+                            else:
+                                postcode_validation = {
+                                    'postcode': postal_code,
+                                    'valid': False,
+                                    'message': 'Postcode not found in Malaysia database'
+                                }
                 
                 results.append({
                     'filename': filename,
@@ -1379,6 +1421,75 @@ def not_found(error):
 @app.errorhandler(500)
 def internal_error(error):
     return jsonify({'success': False, 'error': 'Internal server error'}), 500
+
+# Extract functions for batch processing
+def extract_ic_number(extracted_text):
+    """Extract IC number from text"""
+    full_text = ' '.join(extracted_text)
+    ic_match = re.search(r'\d{6}-\d{2}-\d{4}', full_text)
+    return ic_match.group() if ic_match else None
+
+def extract_name(extracted_text, ic_number):
+    """Extract name from text (simplified version for batch processing)"""
+    # This is a simplified version - in practice you'd want the full logic from process_ocr
+    full_text = ' '.join(extracted_text)
+    # Simple extraction - look for text after IC number
+    if ic_number:
+        ic_pos = full_text.find(ic_number)
+        if ic_pos != -1:
+            after_ic = full_text[ic_pos + len(ic_number):].strip()
+            # Take first few words as name
+            words = after_ic.split()[:4]  # Max 4 words for name
+            name = ' '.join(words)
+            if name and not any(char.isdigit() for char in name):
+                return name
+    return None
+
+def extract_gender(extracted_text):
+    """Extract gender from text"""
+    full_text = ' '.join(extracted_text).upper()
+    gender_keywords = {
+        'LELAKI': 'Male',
+        'PEREMPUAN': 'Female',
+    }
+    for keyword, value in gender_keywords.items():
+        if keyword in full_text:
+            return value
+    return None
+
+def extract_religion(extracted_text):
+    """Extract religion from text"""
+    full_text = ' '.join(extracted_text).upper()
+    religion_keywords = {
+        'ISLAM': 'ISLAM',
+        'ISL.AM': 'ISLAM',
+        'SLAM': 'ISLAM',
+        'ISLAMIC': 'ISLAM',
+        'KRISTIAN': 'KRISTIAN',
+        'BUDDHA': 'BUDDHA',
+        'HINDU': 'HINDU',
+        'SIKH': 'SIKH',
+    }
+    for keyword, value in religion_keywords.items():
+        if keyword in full_text:
+            return value
+    return None
+
+def extract_address(extracted_text, ic_number, name):
+    """Extract address from text (simplified version)"""
+    # This is a simplified version - look for address keywords
+    address_keywords = ['LOT', 'JALAN', 'KAMPUNG', 'NO', 'BATU', 'LEBUH', 'LORONG']
+    full_text = ' '.join(extracted_text)
+    
+    address_parts = []
+    for line in extracted_text:
+        line_upper = line.upper()
+        if any(keyword in line_upper for keyword in address_keywords):
+            address_parts.append(line.strip())
+        elif re.search(r'\d{5}', line):  # Postcode
+            address_parts.append(line.strip())
+    
+    return ' '.join(address_parts) if address_parts else None
 
 if __name__ == '__main__':
     logger.info("Starting Malaysia IC OCR Flask API...")

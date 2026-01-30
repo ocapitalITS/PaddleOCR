@@ -138,7 +138,8 @@ B) Name (Lines 420-530)
    - Limit to max 2 lines
 
 C) Gender (Lines 540-560)
-   - Look for LELAKI (Male) or PEREMPUAN (Female)
+   - Look for LELAKI or PEREMPUAN keywords
+   - Return "Male" or "Female"
 
 D) Religion (Lines 565-590)
    - Match keywords: ISLAM, BUDDHA, KRISTIAN, HINDU
@@ -310,7 +311,7 @@ Export as JSON
 The application extracts:
 - **IC Number**: 12-digit format (XXXXXX-XX-XXXX)
 - **Name**: Full name with BIN/BINTI
-- **Gender**: LELAKI (Male) or PEREMPUAN (Female)
+- **Gender**: Male or Female
 - **Religion**: ISLAM, BUDDHA, KRISTIAN, HINDU, LAIN-LAIN
 - **Address**: Full mailing address with postal code and state
 

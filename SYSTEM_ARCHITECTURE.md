@@ -92,7 +92,7 @@ graph TB
     "data": {
         "ic_number": "941116-14-5047",
         "name": "SAIFULAZRI BIN MOHD SHAFIEE",
-        "gender": "LELAKI (Male)",
+        "gender": "Male",
         "religion": "ISLAM",
         "address": "LOT 4622 KG MAHKOTA, JALAN SUNGAI TUA, 68100 BATU CAVES, SELANGOR",
         "document_type": "Malaysia Identity Card (MyKad)",

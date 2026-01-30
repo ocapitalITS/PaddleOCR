@@ -106,7 +106,7 @@
   "data": {
     "ic_number": "123456-12-1234",
     "name": "JOHN BIN SMITH",
-    "gender": "LELAKI (Male)",
+    "gender": "Male",
     "religion": "ISLAM",
     "address": "NO 25, JALAN MUTIARA, TAMAN BUKIT INDAH, 34600 KAMUNTING, PERAK",
     "postcode_validation": {
@@ -165,7 +165,7 @@
       "data": {
         "ic_number": "123456-12-1234",
         "name": "JOHN BIN SMITH",
-        "gender": "LELAKI (Male)",
+        "gender": "Male",
         "religion": "ISLAM",
         "address": "NO 25, JALAN MUTIARA, TAMAN BUKIT INDAH, 34600 KAMUNTING, PERAK",
         "postcode_validation": {
@@ -327,7 +327,7 @@ pm.test("Response time is acceptable", function () {
 |-------|---------|
 | `ic_number` | Extracted IC number (format: 123456-12-1234) |
 | `name` | Full name from IC |
-| `gender` | LELAKI (Male) or PEREMPUAN (Female) |
+| `gender` | Male or Female |
 | `religion` | Religion code from IC |
 | `address` | Full address extracted from IC |
 | `postcode_validation` | Validates postcode against Malaysia database |

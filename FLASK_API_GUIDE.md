@@ -91,7 +91,7 @@ Response Example:
   "data": {
     "ic_number": "920521-03-5949",
     "name": "MUHAMAD SAFUAN BIN ABDULLAH SIDEK",
-    "gender": "LELAKI (Male)",
+    "gender": "Male",
     "religion": "ISLAM",
     "address": "828, JALAN SEKOLAH CINA, 17200 RANTAU PANJANG, KELANTAN",
     "postcode_validation": {
