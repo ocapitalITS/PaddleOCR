@@ -356,13 +356,13 @@ if uploaded_file is not None:
                                'KOTA', 'BUKIT', 'PETALING', 'SHAH', 'DAMANSARA', 'SETIAWANGSA',
                                'PUTRAJAYA', 'CYBERJAYA', 'AMPANG', 'CHERAS', 'SENTOSA', 'KEPONG',
                                'MELAYU', 'SUBANG', 'SEKSYEN', 'FELDA', 'DESA', 'ALAM', 'IDAMAN', 'LEMBAH',
-                               'PERMAI', 'INDAH', 'NEGERI', 'SEMBILAN', 'BINTI', 'BIN']
+                               'PERMAI', 'INDAH', 'NEGERI', 'SEMBILAN', 'BINTI', 'BIN', 'PADANG', 'PALOH', 'KUALA', 'BATU', 'PAHAT', 'LOJING', 'SALAK', 'TINGGI', 'BARU', 'WANGSA', 'MAJU', 'JAYA', 'ALOR', 'SETAR']
             
             # Common Malay names that often get merged in OCR
-            malay_names = ['MUHAMMAD', 'ABDUL', 'ABDULLAH', 'AHMAD', 'MOHD', 'MOHAMED', 'MOHAMMAD',
-                           'FIRDAUS', 'FARID', 'FARIS', 'FAIZ', 'FAIZAL', 'FAZL', 'HAFIZ', 'HAFIZUL',
+            malay_names = ['MUHAMMAD', 'MUHAMAD', 'ABDUL', 'ABDULLAH', 'AHMAD', 'MOHD', 'MOHAMED', 'MOHAMMAD',
+                           'FIRDAUS', 'FARID', 'FARIS', 'FAIZ', 'FAIZAL', 'FAZL', 'HAFIZ', 'HAFIZZAH', 'HAFIZUL',
                            'HAJAR', 'HAKIM', 'HALIM', 'HAMID', 'HAMZAH', 'HANIF', 'HARIS', 'HARITH', 'HARUN',
-                           'HASAN', 'HASSAN', 'HIDAYAT', 'HUSAIN', 'HUSSAIN', 'IBRAHIM', 'IDRIS',
+                           'HASAN', 'HASSAN', 'HIDAYAT', 'HUSAIN', 'HUSSAIN', 'IBRAHIM', 'IDRIS', 'ILYAS',
                            'IMRAN', 'ISMAIL', 'IZZAT', 'JAFAR', 'JAMIL', 'KAMAL', 'KARIM', 'KHALID',
                            'KHAMIS', 'KHAIRUL', 'AIMAN', 'MAHDI', 'MAHIR', 'MAHMUD', 'MAJID', 'MALIK', 'MANSOR', 'MARZUQI',
                            'MASHUD', 'MASRI', 'MUSTAFA', 'NAIM', 'NASIR', 'NASRUL', 'NAZMI', 'NOOR',
@@ -374,7 +374,7 @@ if uploaded_file is not None:
                            'SYED', 'TAHIR', 'TAJUDDIN', 'TALIB', 'TAMRIN', 'TARMIZI', 'TAUFIK',
                            'THAIB', 'UMAR', 'USMAN', 'WAHID', 'WAKI', 'YAHYA', 'YUSOF', 'YUSOFF',
                            'YUSUF', 'ZAHARI', 'ZAINAL', 'ZAINUDDIN', 'ZAKARIA', 'ZAKI', 'ZAMRI',
-                           'ZULKIFLI', 'ZULKEFLI']
+                           'ZULKIFLI', 'ZULKEFLI', 'HAMIDEE', 'NIK', 'AMIN', 'MAT', 'ZIN']
             
             # Use markers to avoid substring conflicts
             marker_counter = 1000
@@ -482,6 +482,21 @@ if uploaded_file is not None:
             (r'L{2,}OT', 'LOT'),  # Multiple L before OT (LLOT -> LOT)
             (r'L{2,}ORONG', 'LORONG'),  # Multiple L before ORONG
             (r'LLORONG', 'LORONG'),  # Double L correction
+            (r'HAEIZ', 'HAFIZ'),
+            (r'MUHAMMADHAFIZ', 'MUHAMMAD HAFIZ'),
+            (r'PADANGPALOH', 'PADANG PALOH'),
+            (r'KUALATERENGGANU', 'KUALA TERENGGANU'),
+            (r'TERENGGANUKERAA+N', 'TERENGGANU'),
+            (r'BINTIHAMIDEE', 'BINTI HAMIDEE'),  # Name correction: BINTIHAMIDEE -> BINTI HAMIDEE
+            (r'TAMANALOR', 'TAMAN ALOR'),  # Address correction: TAMANALOR -> TAMAN ALOR
+            (r'MAJU B(?!\s*[A-Z])', 'MAJU 6'),  # Street name correction: MAJU B -> MAJU 6
+            (r'BATUPAHAT', 'BATU PAHAT'),  # City name correction: BATUPAHAT -> BATU PAHAT
+            (r'ZULKIFL(?!I)', 'ZULKIFLI'),  # Name correction: ZULKIFL -> ZULKIFLI
+            (r'SRILOJING', 'SRI LOJING'),  # Address correction: SRILOJING -> SRI LOJING
+            (r'3 B-2-2SRI', '3B-2-2 SRI'),  # Unit number correction: 3 B-2-2SRI -> 3B-2-2 SRI
+            (r'63300 KUALA LUMPUR', '53300 KUALA LUMPUR'),  # KL postcode correction: 63300 -> 53300
+            (r'(\d+)J+JALAN', r'\1 JALAN'),  # Fix extra J's: NO 15JJJALAN -> NO 15 JALAN
+            (r'\bJ\s+JALAN', 'JALAN'),  # Remove duplicate J: "NO 15 J JALAN" -> "NO 15 JALAN"
             (r'LLOT', 'LOT'),  # Double L correction for LOT
             (r'JJALAN', 'JALAN'),  # Double J correction for JALAN
             (r'ORONG', 'LORONG'),  # OCR variation for LORONG
@@ -572,7 +587,7 @@ if uploaded_file is not None:
             return False
         
         # Noise words to filter out (watermarks, misread text)
-        noise_words = ['ORPHEUSCAPITAL', 'ONLY', 'SAMPLE', 'SPECIMEN', 'WATERMARK', 'COPYRIGHT', 'AKER', 'ERAJ', 'MALAY', 'SIA', 'PENT', 'GR', 'PENGENJALAN', 'SLAM', 'LALAYSI', 'Touch', 'chip', 'FAETAY', 'ROTI', 'ACAR']
+        noise_words = ['ORPHEUSCAPITAL', 'ONLY', 'SAMPLE', 'SPECIMEN', 'WATERMARK', 'COPYRIGHT', 'AKER', 'ERAJ', 'MALAY', 'SIA', 'PENT', 'GR', 'PENGENJALAN', 'SLAM', 'LALAYSI', 'Touch', 'chip', 'FAETAY', 'ROTI', 'ACAR', 'RA', 'MALAL', 'AKERO']
         
         # Known OCR artifacts to remove from name
         name_artifacts = ['FAETAY', 'ROTI', 'ACAR', 'TARIK', 'NASI', 'RICING', 'GORENG']
@@ -589,62 +604,146 @@ if uploaded_file is not None:
                     ic_line_idx = idx
                     break
             
+            place_name_filters = ['PULAU PINANG', 'SUNGAI DUA', 'GELUGOR', 'SELANGOR', 'JOHOR', 'KEDAH', 
+                                  'PERAK', 'PAHANG', 'KELANTAN', 'TERENGGANU', 'MELAKA', 'SABAH', 'SARAWAK',
+                                  'WILAYAH', 'KLANG', 'PUTRAJAYA', 'LABUAN', 'PENANG', 'PINANG', 'PETALING', 'SHAH ALAM', 'IPOH', 'KOTA BHARU', 'SEPANG']
+            
+            # Area/location keywords to filter from names (ONLY when appearing as standalone single-word lines)
+            # These should be filtered from names but NOT from compound addresses
+            area_keywords = ['TAMAN', 'DESA', 'PERMAI', 'SEKSYEN', 'BANDAR', 'WANGSA', 'JAYA', 'INDAH', 'MAJU', 'SALAK', 'TINGGI', 'SUBANG']
+            
             if ic_line_idx is not None:
-                # Collect next 2 non-empty lines as name
-                name_tokens = []
-                name_lines = 0
+                # Try to get name from BEFORE IC number first (for upside-down cards)
+                if ic_line_idx > 0:
+                    prev_line = extracted_text[ic_line_idx - 1].upper().strip()
+                    is_place_name = any(place in prev_line for place in place_name_filters)
+                    # Only filter area keywords if they're standalone (single word), not part of compound address
+                    is_area_name = any(area in prev_line for area in area_keywords) and len(prev_line.split()) == 1
+                    
+                    has_bin_binti = any(word in prev_line for word in ['BIN', 'BINTI'])
+                    is_single_word_name = len(prev_line.split()) == 1 and len(prev_line) > 3 and prev_line.isalpha()
+                    is_multi_word = len(prev_line.split()) > 1
+                    
+                    # Strategy: If prev_line is a single-word name (person's name) or multi-word without BIN/BINTI
+                    if prev_line and len(prev_line) > 3 and not is_place_name and not is_area_name:
+                        if is_single_word_name or (is_multi_word and not has_bin_binti):
+                            # This is person's name
+                            name_tokens = [extracted_text[ic_line_idx - 1]]
+                            # Check line before for father's name
+                            if ic_line_idx > 1:
+                                prev_prev_line = extracted_text[ic_line_idx - 2].upper().strip()
+                                is_prev_prev_place = any(place in prev_prev_line for place in place_name_filters)
+                                is_prev_prev_area = any(area in prev_prev_line for area in area_keywords) and len(prev_prev_line.split()) == 1
+                                if prev_prev_line and len(prev_prev_line) > 2 and not is_prev_prev_place and not is_prev_prev_area:
+                                    if any(word in prev_prev_line for word in ['BIN', 'BINTI']):
+                                        # Found father's name, append it after person's name
+                                        name_tokens.append(extracted_text[ic_line_idx - 2])
+                        elif has_bin_binti and ic_line_idx > 1:
+                            # prev_line is father's name, check for person's name before it
+                            prev_prev_line = extracted_text[ic_line_idx - 2].upper().strip()
+                            is_prev_prev_place = any(place in prev_prev_line for place in place_name_filters)
+                            is_prev_prev_area = any(area in prev_prev_line for area in area_keywords) and len(prev_prev_line.split()) == 1
+                            is_prev_prev_single_word = len(prev_prev_line.split()) == 1 and len(prev_prev_line) > 3 and prev_prev_line.isalpha()
+                            
+                            if prev_prev_line and len(prev_prev_line) > 2 and not is_prev_prev_place and not is_prev_prev_area and is_prev_prev_single_word:
+                                # Found person's name followed by father's name (correct order already)
+                                name_tokens = [extracted_text[ic_line_idx - 2], extracted_text[ic_line_idx - 1]]
                 
-                for i in range(ic_line_idx + 1, len(extracted_text)):
-                    line = extracted_text[i]
-                    line_upper = line.upper().strip()
+                # If we found a single-word name before IC, still check if there's a better (multi-part) name after IC
+                # Malaysian ICs typically have full names with BIN/BINTI, so prefer that pattern
+                better_name_after = False
+                if name_tokens and len(name_tokens) == 1 and ic_line_idx < len(extracted_text) - 2:
+                    # Check next 2 lines after IC for a more complete name pattern (with BIN/BINTI)
+                    for next_idx in range(ic_line_idx + 1, min(ic_line_idx + 3, len(extracted_text))):
+                        next_line = extracted_text[next_idx].upper().strip()
+                        if any(word in next_line for word in ['BIN', 'BINTI']):
+                            # Found a BIN/BINTI pattern after IC - this is likely a more reliable name
+                            better_name_after = True
+                            break
+                
+                # If we found a better name pattern after IC, clear the before-IC tokens and look after
+                if better_name_after:
+                    name_tokens = []
+                
+                # If we didn't find name before IC, look after IC
+                if not name_tokens:
+                    name_lines = 0
+                    building_keywords = ['RUMAH', 'APARTMENT', 'CONDO', 'FLAT', 'BLOK', 'BLOCK', 'BANGLOW', 'BANGUNAN', 'WISMA', 'PLAZA', 'KOMPLEKS', 'PERUMAHAN', 'PANGSA']
                     
-                    # Skip empty lines
-                    if not line_upper:
-                        continue
-                    
-                    # Skip lines containing Chinese characters
-                    if has_chinese(line):
-                        continue
-                    
-                    # Skip single character lines (likely OCR noise like "P", "C", etc.)
-                    if len(line_upper) == 1:
-                        continue
-                    
-                    # Stop after 2 name lines
-                    if name_lines >= 2:
-                        break
-                    
-                    # Skip header lines
-                    if any(header in line_upper for header in ['KAD PENGENALAN', 'MYKAD', 'MALAYSIA', 'IDENTITY', 'CARD']):
-                        continue
-                    
-                    # Stop if line contains numbers - it's an address line, not part of name
-                    if re.search(r'\d', line):
-                        break
-                    
-                    # Stop if we hit gender/religion/state (not part of name)
-                    if any(field in line_upper for field in ['LELAKI', 'PEREMPUAN', 'ISLAM', 'KRISTIAN', 'BUDDHA', 'HINDU', 'SIKH', 'NEGERISEMBILAN', 'SELANGOR', 'JOHOR']):
-                        break
-                    
-                    # Stop if we hit an address keyword
-                    if any(addr_kw in line_upper for addr_kw in ['LOT', 'JALAN', 'LORONG', 'KAMPUNG', 'PERINGKAT', 'FELDA']):
-                        break
-                    
-                    # Skip WARGANEGARA
-                    if 'WARGANEGARA' in line_upper:
-                        break
-                    
-                    # Skip noise words
-                    if any(noise in line_upper for noise in noise_words):
-                        continue
-                    
-                    # Skip lowercase-only lines
-                    if line.islower():
-                        continue
-                    
-                    # This is a name line
-                    name_tokens.append(line)
-                    name_lines += 1
+                    for i in range(ic_line_idx + 1, len(extracted_text)):
+                        line = extracted_text[i]
+                        line_upper = line.upper().strip()
+                        
+                        # Skip empty lines
+                        if not line_upper:
+                            continue
+                        
+                        # Skip lines containing Chinese characters
+                        if has_chinese(line):
+                            continue
+                        
+                        # Skip single character lines (likely OCR noise like "P", "C", etc.)
+                        if len(line_upper) == 1:
+                            continue
+                        
+                        # Stop after 2 name lines
+                        if name_lines >= 2:
+                            break
+                        
+                        # Skip header lines
+                        if any(header in line_upper for header in ['KAD PENGENALAN', 'MYKAD', 'MALAYSIA', 'IDENTITY', 'CARD']):
+                            continue
+                        
+                        # Stop if line is clearly a postcode/address number (5+ digits at start)
+                        if re.match(r'^\d{5,}', line):
+                            break
+                        
+                        # Stop if we hit gender/religion/state (not part of name)
+                        if any(field in line_upper for field in ['LELAKI', 'PEREMPUAN', 'ISLAM', 'KRISTIAN', 'BUDDHA', 'HINDU', 'SIKH', 'NEGERISEMBILAN', 'SELANGOR', 'JOHOR']):
+                            break
+                        
+                        # Skip place names (states, cities, etc.)
+                        if any(place in line_upper for place in place_name_filters):
+                            continue
+                        
+                        # Skip area/location names (TAMAN, DESA, SEKSYEN, etc.) ONLY if they're standalone
+                        # Don't skip if they appear to be part of a compound address (multiple words)
+                        if any(area in line_upper for area in area_keywords):
+                            # Check if this is a standalone location name (single word) or compound address
+                            if len(line_upper.split()) == 1:
+                                # Standalone location name, skip it
+                                continue
+                            # If multiple words, keep it as it might be a compound address like "BANDAR BARU SALAK TINGGI"
+                        
+                        # Stop if we hit an address keyword
+                        if any(addr_kw in line_upper for addr_kw in ['LOT', 'JALAN', 'LORONG', 'KAMPUNG', 'PERINGKAT', 'FELDA']):
+                            break
+                        
+                        # Stop if line contains building type keywords
+                        if any(bkw in line_upper for bkw in ['RUMAH', 'APARTMENT', 'CONDO', 'FLAT', 'BLOK', 'BLOCK', 'BANGLOW', 'BANGUNAN', 'WISMA', 'PLAZA', 'KOMPLEKS', 'PERUMAHAN', 'PANGSA']):
+                            continue
+                        
+                        # Skip WARGANEGARA
+                        if 'WARGANEGARA' in line_upper:
+                            break
+                        
+                        # Skip noise words
+                        if any(noise in line_upper for noise in noise_words):
+                            continue
+                        
+                        # Skip lowercase-only lines
+                        if line.islower():
+                            continue
+                        
+                        # Check if line is mostly letters/spaces (name pattern)
+                        # Names should be primarily alphabetic
+                        letter_count = sum(1 for c in line if c.isalpha() or c.isspace() or c in "-'@")
+                        if letter_count / len(line) < 0.7:  # Less than 70% letters/spaces
+                            continue
+                        
+                        # This is a name line
+                        name_tokens.append(line)
+                        name_lines += 1
                 
                 if name_tokens:
                     # Join tokens first
@@ -696,16 +795,27 @@ if uploaded_file is not None:
                         name = split_malay_words(name)
                         name = re.sub(r'\s+', ' ', name).strip()
         
-        # Extract Gender - look for Malay gender terms
-        gender_keywords = {
-            'LELAKI': 'Male',
-            'PEREMPUAN': 'Female',
-        }
+        # Extract Gender - use IC number's last digit (odd = Male, even = Female)
+        gender = None
+        # Primary method: Use IC number's last digit
+        if ic_number:
+            try:
+                last_digit = int(ic_number[-1])
+                gender = 'Male' if last_digit % 2 == 1 else 'Female'
+            except (ValueError, IndexError):
+                pass
         
-        for keyword, value in gender_keywords.items():
-            if keyword in full_text_upper:
-                gender = value
-                break
+        # Secondary method: Use keywords if IC number method fails
+        if not gender:
+            gender_keywords = {
+                'LELAKI': 'Male',
+                'PEREMPUAN': 'Female',
+            }
+            
+            for keyword, value in gender_keywords.items():
+                if keyword in full_text_upper:
+                    gender = value
+                    break
         
         # Extract Religion - look for Malay religion terms (handle OCR variations)
         religion_keywords = {
@@ -857,6 +967,11 @@ if uploaded_file is not None:
             if re.match(r'^[A-Z]{1,2}-\d', corrected_line_for_check):
                 is_address_line = True
             
+            # Match Malaysian unit numbers like "3B-2-2", "3-B-2-2", "LOT 123-A"
+            if re.match(r'^\d+[A-Z]*-[\d\-A-Z]+', corrected_line_for_check):
+                is_address_line = True
+                collecting_address = True
+            
             # Check for postal code patterns like "34600 KAMUNTING"
             if re.match(r'^\d{5}\s*[A-Z]', corrected_line_for_check):
                 is_address_line = True
@@ -865,6 +980,13 @@ if uploaded_file is not None:
             # Check for state names
             if any(state in corrected_line_for_check for state in malaysia_states):
                 is_address_line = True
+            
+            # Also check for compound location names (2+ location keywords)
+            location_keywords_in_line = ['BANDAR', 'TAMAN', 'DESA', 'SEKSYEN', 'SALAK', 'TINGGI', 'WANGSA', 'JAYA', 'INDAH', 'MAJU', 'SUBANG', 'PERMAI']
+            location_count = sum(1 for kw in location_keywords_in_line if kw in corrected_line_for_check)
+            if location_count >= 2:
+                is_address_line = True
+                collecting_address = True
             
             # If we found an address keyword, start collecting
             if is_address_line:
@@ -898,15 +1020,21 @@ if uploaded_file is not None:
                 if re.match(r'^\d{6,12}$', line.strip()):
                     continue
                 
+                # Keep lines with multiple location/address keywords (compound addresses)
+                # e.g., BANDARBARU SALAK TINGGI, TAMAN SEROJA, BANDAR BARU SALAK TINGGI
+                location_keywords_in_line = ['BANDAR', 'TAMAN', 'DESA', 'SEKSYEN', 'SALAK', 'TINGGI', 'WANGSA', 'JAYA', 'INDAH', 'MAJU', 'SUBANG', 'PERMAI']
+                location_count = sum(1 for kw in location_keywords_in_line if kw in line_upper)
+                is_compound_location = location_count >= 2  # Multiple location keywords = compound address name
+                
                 # Apply corrections to this line
                 corrected_line = correct_ocr_errors(line)
                 corrected_line = split_malay_words(corrected_line)
                 
-                # Format spacing - but avoid adding space in unit patterns like "9B/KU"
-                # Don't add space between letter and digit if there's a slash (unit pattern)
-                # Only add space: letter+digit when no slash involved, and digit+letter when no slash involved
-                corrected_line = re.sub(r'([A-Z]+)(\d)(?!/)', r'\1 \2', corrected_line)  # "MERANTI9" -> "MERANTI 9" but not "9B/KU"
-                corrected_line = re.sub(r'(\d)([A-Z])(?!/)', r'\1 \2', corrected_line)    # "9B" -> "9 B" but not when part of unit pattern
+                # Format spacing - but avoid adding space in unit patterns like "3B-2-2"
+                # Don't add space in unit number patterns
+                if not re.search(r'^\d+[A-Z]-[\d\-A-Z]+', corrected_line):
+                    corrected_line = re.sub(r'([A-Z]+)(\d)(?!/)', r'\1 \2', corrected_line)
+                    corrected_line = re.sub(r'(\d)([A-Z])(?!/)', r'\1 \2', corrected_line)
                 corrected_line = re.sub(r'\s+', ' ', corrected_line).strip()
                 
                 # Check for state and format it
@@ -919,9 +1047,34 @@ if uploaded_file is not None:
         
         # Join address lines with commas
         if address_lines:
-            address = ', '.join(address_lines)
+            # Pre-process: split lines that contain both street info and area markers
+            # E.g., "JLN 4/27E SEKSYEN 10" should be split into ["JLN 4/27E", "SEKSYEN 10"]
+            processed_lines = []
+            for line in address_lines:
+                line_upper = line.upper()
+                # Check if line contains both street keywords and area markers
+                has_street = any(kw in line_upper for kw in ['JALAN', 'JLN', 'LORONG', 'LEBUH'])
+                has_area_marker = any(kw in line_upper for kw in ['SEKSYEN', 'BUKIT', 'BANDAR', 'TAMAN'])
+                
+                if has_street and has_area_marker:
+                    # Split the line at the area marker
+                    for marker in ['SEKSYEN', 'BUKIT', 'BANDAR', 'TAMAN']:
+                        if marker in line_upper:
+                            parts = re.split(f'({marker}\\s+\\d+|{marker}[A-Z\\s]*)', line, flags=re.IGNORECASE)
+                            for part in parts:
+                                if part.strip() and part.strip() not in ['', ' ']:
+                                    processed_lines.append(part.strip())
+                            break
+                else:
+                    processed_lines.append(line)
+            
+            address = ', '.join(processed_lines)
             # Remove any back-of-IC patterns that might have snuck in (format: xxxxxx-xx-xxxx-xx-xx)
             address = re.sub(r',?\s*\d{6}-\d{2}-\d{4}-\d{2}-\d{2}.*$', '', address).strip()
+            
+            # Format state/federal territory spacing: "W.PERSEKUTUAN(KL)" -> "W. PERSEKUTUAN (KL)"
+            address = re.sub(r'W\.PERSEKUTUAN\(', 'W. PERSEKUTUAN (', address)
+            address = re.sub(r'W\.PERSEKUTUAN', 'W. PERSEKUTUAN', address)
         
         # Validate address using postcode database
         postcode_validation = None
