@@ -10,6 +10,7 @@ import gc
 import sys
 import time
 from pdf2image import convert_from_bytes
+from rotation_detector import EnhancedRotationDetector, quick_rotation_estimate
 
 # Poppler path for PDF conversion (Windows)
 POPPLER_PATH = os.path.join(os.path.dirname(__file__), 'poppler', 'poppler-24.08.0', 'Library', 'bin')
@@ -151,6 +152,40 @@ if uploaded_file is not None:
         del display_image
         gc.collect()
         
+        # ENHANCED: Use intelligent rotation detection before trying all angles
+        status_text.text("🔍 Analyzing image orientation...")
+        progress_bar.progress(18)
+        
+        # Convert to BGR for rotation detector (it expects BGR)
+        img_bgr = cv2.cvtColor(img_array, cv2.COLOR_RGB2BGR)
+        
+        # Use enhanced rotation detector for smart pre-screening
+        rotation_detector = EnhancedRotationDetector()
+        rotation_analysis = rotation_detector.detect_rotation_angle(img_bgr)
+        
+        detected_angle = rotation_analysis['angle']
+        detection_confidence = rotation_analysis['confidence']
+        detection_method = rotation_analysis.get('method', 'unknown')
+        
+        st.info(f"🎯 **Rotation Analysis**: Detected {detected_angle}° rotation (Confidence: {detection_confidence:.1f}%, Method: {detection_method})")
+        
+        # If confidence is high, prioritize this angle
+        if detection_confidence > 70:
+            # Strong detection - try this angle first with higher priority
+            priority_angles = [detected_angle, 0, 90, 180, 270]
+            # Remove duplicates while preserving order
+            priority_angles = list(dict.fromkeys(priority_angles))
+            st.success(f"✅ High confidence rotation detection at {detected_angle}°")
+        elif detection_confidence > 40:
+            # Medium detection - try this angle with other candidates
+            priority_angles = [detected_angle, (detected_angle + 180) % 360, 0, 90, 180, 270]
+            priority_angles = list(dict.fromkeys(priority_angles))
+            st.info(f"ℹ️ Medium confidence detection - will verify with OCR")
+        else:
+            # Low confidence - try all angles
+            priority_angles = [0, 90, 180, 270]
+            st.warning(f"⚠️ Low confidence detection - will try all orientations")
+        
         # Try different rotations and flips to handle upside-down and mirrored images
         # Store the best result based on Malaysia IC keyword detection
         best_results = None
@@ -161,17 +196,23 @@ if uploaded_file is not None:
         best_flipped_array = None
         best_image = None  # Store the corrected image for drawing boxes
         best_text_count = 0
-        orientations = [0, 90, 180, 270]
         flip_types = [None, 'horizontal']  # Try normal and horizontally flipped
         angle_stats = {}  # Store stats for each angle/flip combination
         
-        status_text.text("🔄 Processing OCR at different angles and orientations... (this may take 30-60 seconds)")
+        status_text.text("🔄 Processing OCR at detected and alternate orientations...")
         progress_bar.progress(20)
         
-        total_combinations = len(orientations) * len(flip_types)
+        total_combinations = len(priority_angles) * len(flip_types)
         combination_idx = 0
         
+        # Track if we found a good result early
+        found_good_result = False
+        
         for flip_type in flip_types:
+            if found_good_result and combination_idx > 4:
+                # Early exit if we found a good result and tried a few variations
+                break
+                
             # Apply flip if needed
             if flip_type == 'horizontal':
                 flipped_array = np.fliplr(img_array)
@@ -183,19 +224,19 @@ if uploaded_file is not None:
                 flipped_array = img_array
                 flip_label = "Normal"
             
-            for angle_idx, angle in enumerate(orientations):
+            for angle_idx, angle in enumerate(priority_angles):
                 try:
                     # Update progress
-                    progress = 20 + (combination_idx * (45 // total_combinations))
+                    progress = 20 + (combination_idx * (45 // max(total_combinations, 1)))
                     progress_bar.progress(min(progress, 65))
                     angle_display = f"{angle}°"
                     if flip_type:
                         angle_display = f"{flip_label}+{angle}°"
-                    status_text.text(f"🔄 Processing OCR at {angle_display} (this may take ~15 seconds)...")
+                    status_text.text(f"🔄 Processing OCR at {angle_display}...")
                     
                     # Rotate image if needed
                     if angle > 0:
-                        rotated_array = np.rot90(flipped_array, k=angle//90)
+                        rotated_array = np.rot90(flipped_array, k=(angle//90) % 4)
                     else:
                         rotated_array = flipped_array
                     
@@ -244,6 +285,10 @@ if uploaded_file is not None:
                             best_flipped_array = flipped_array
                             best_image = rotated_array.copy()  # Store the corrected image
                             best_text_count = text_count
+                            
+                            # If we found a high-quality result, we can stop early
+                            if score >= 3 and text_count >= 10:
+                                found_good_result = True
                     
                     combination_idx += 1
                 except Exception as rotation_error:

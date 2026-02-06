@@ -71,6 +71,7 @@ except ImportError:
     pdf_support = False
 import cv2
 from pathlib import Path
+from rotation_detector import EnhancedRotationDetector
 
 # Configure poppler path for PDF processing
 POPPLER_PATH = str(Path(__file__).parent / 'poppler' / 'poppler-24.08.0' / 'Library' / 'bin')
@@ -352,19 +353,40 @@ def process_ocr():
             image = cv2.resize(image, (new_w, new_h), interpolation=cv2.INTER_AREA)
             logger.info(f"Resized image from {w}x{h} to {new_w}x{new_h} for faster processing")
         
-        # Detect orientation and extract text using EXACT same algorithm as Streamlit app
-        logger.info("Detecting orientation and processing OCR...")
+        # ENHANCED: Detect orientation using intelligent rotation detector
+        logger.info("Analyzing image orientation with enhanced detector...")
+        rotation_detector = EnhancedRotationDetector()
+        rotation_analysis = rotation_detector.detect_rotation_angle(image)
+        
+        detected_angle = rotation_analysis['angle']
+        detection_confidence = rotation_analysis['confidence']
+        detection_method = rotation_analysis.get('method', 'unknown')
+        
+        logger.info(f"Detected rotation: {detected_angle}° (Confidence: {detection_confidence:.1f}%, Method: {detection_method})")
+        
+        # Prioritize angles based on detection confidence
+        if detection_confidence > 70:
+            priority_angles = [detected_angle, 0, 90, 180, 270]
+            priority_angles = list(dict.fromkeys(priority_angles))
+        elif detection_confidence > 40:
+            priority_angles = [detected_angle, (detected_angle + 180) % 360, 0, 90, 180, 270]
+            priority_angles = list(dict.fromkeys(priority_angles))
+        else:
+            priority_angles = [0, 90, 180, 270]
         
         # Try different rotations and flips to handle upside-down and mirrored images
         best_results = None
         best_score = 0
         best_angle = 0
         best_text_count = 0
-        orientations = [0, 90, 180, 270]
         flip_types = [None, 'horizontal']
         all_results = []  # Debug: store all attempts
+        found_good_result = False
         
-        for angle in orientations:
+        for angle in priority_angles:
+            if found_good_result:
+                break
+                
             for flip_type in flip_types:
                 try:
                     # Apply flip first (like Streamlit does)
@@ -375,7 +397,7 @@ def process_ocr():
                     
                     # Rotate image using np.rot90 (same as Streamlit)
                     if angle > 0:
-                        rotated_array = np.rot90(flipped_array, k=angle//90)
+                        rotated_array = np.rot90(flipped_array, k=(angle//90) % 4)
                     else:
                         rotated_array = flipped_array
                     
@@ -450,10 +472,10 @@ def process_ocr():
                             best_angle = angle
                             best_text_count = text_count
                             
-                            # OPTIMIZATION: Early termination if we found a high-confidence result
-                            # IC number detected (score >= 3) + keywords (score >= 5) + decent text count
-                            if best_score >= 5 and best_text_count >= 8:
+                            # High-confidence result - can exit early
+                            if best_score >= 3 and best_text_count >= 10:
                                 logger.info(f"Early termination: Found high-confidence result at {angle}° flip {flip_type}")
+                                found_good_result = True
                                 break
                 
                 except Exception as rotation_error:
@@ -827,7 +849,8 @@ def process_ocr():
                             continue
                         
                         # Stop if line contains numbers - it's an address line, not part of name
-                    if re.match(r'^\d{5,}', line):
+                        if re.match(r'^\d{5,}', line):
+                            break
                         
                         # Stop if we hit gender/religion/state (not part of name)
                         if any(field in line_upper for field in ['LELAKI', 'PEREMPUAN', 'ISLAM', 'KRISTIAN', 'BUDDHA', 'HINDU', 'SIKH', 'NEGERISEMBILAN', 'SELANGOR', 'JOHOR']):

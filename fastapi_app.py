@@ -72,6 +72,7 @@ except ImportError:
     pdf_support = False
 import cv2
 from pathlib import Path
+from rotation_detector import EnhancedRotationDetector
 
 # Configure poppler path for PDF processing
 POPPLER_PATH = str(Path(__file__).parent / 'poppler' / 'poppler-24.08.0' / 'Library' / 'bin')
@@ -300,16 +301,40 @@ def process_image_ocr(image_array):
         image_array = cv2.resize(image_array, (new_w, new_h), interpolation=cv2.INTER_AREA)
         logger.info(f"Resized image from {w}x{h} to {new_w}x{new_h} for faster processing")
     
+    # ENHANCED: Use intelligent rotation detection
+    logger.info("Analyzing image orientation with enhanced detector...")
+    rotation_detector = EnhancedRotationDetector()
+    rotation_analysis = rotation_detector.detect_rotation_angle(image_array)
+    
+    detected_angle = rotation_analysis['angle']
+    detection_confidence = rotation_analysis['confidence']
+    detection_method = rotation_analysis.get('method', 'unknown')
+    
+    logger.info(f"Detected rotation: {detected_angle}° (Confidence: {detection_confidence:.1f}%, Method: {detection_method})")
+    
+    # Prioritize angles based on detection confidence
+    if detection_confidence > 70:
+        priority_angles = [detected_angle, 0, 90, 180, 270]
+        priority_angles = list(dict.fromkeys(priority_angles))  # Remove duplicates
+    elif detection_confidence > 40:
+        priority_angles = [detected_angle, (detected_angle + 180) % 360, 0, 90, 180, 270]
+        priority_angles = list(dict.fromkeys(priority_angles))
+    else:
+        priority_angles = [0, 90, 180, 270]
+    
     # Try different rotations and flips
     best_results = None
     best_score = 0
     best_angle = 0
     best_text_count = 0
-    orientations = [0, 90, 180, 270]
     flip_types = [None, 'horizontal']
     all_results = []
+    found_good_result = False
     
-    for angle in orientations:
+    for angle in priority_angles:
+        if found_good_result:
+            break
+            
         for flip_type in flip_types:
             try:
                 if flip_type == 'horizontal':
@@ -318,7 +343,7 @@ def process_image_ocr(image_array):
                     flipped_array = image_array.copy()
                 
                 if angle > 0:
-                    rotated_array = np.rot90(flipped_array, k=angle//90)
+                    rotated_array = np.rot90(flipped_array, k=(angle//90) % 4)
                 else:
                     rotated_array = flipped_array
                 
@@ -376,20 +401,20 @@ def process_image_ocr(image_array):
                         best_angle = angle
                         best_text_count = text_count
                         
-                        if best_score >= 5 and best_text_count >= 8:
+                        # High-confidence result - can exit early
+                        if best_score >= 3 and best_text_count >= 10:
                             logger.info(f"Early termination: Found high-confidence result at {angle}° flip {flip_type}")
+                            found_good_result = True
                             break
             
             except Exception as rotation_error:
                 logger.warning(f"Error processing rotation {angle}° with flip {flip_type}: {rotation_error}")
                 continue
-        
-        if best_score >= 5 and best_text_count >= 8:
-            break
     
     # Fallback if no IC-matched results found
     if best_results is None:
-        for angle in orientations:
+        logger.warning("No high-confidence IC results found, trying all orientations...")
+        for angle in [0, 90, 180, 270]:
             for flip_type in flip_types:
                 try:
                     if flip_type == 'horizontal':
@@ -431,6 +456,8 @@ def process_image_ocr(image_array):
 
 def extract_fields(results, best_angle):
     """Extract IC fields from OCR results"""
+    from malaysia_ic_extractor_ultimate import UltimateICExtractor
+    
     extracted_text = []
     if results and len(results) > 0:
         ocr_result = results[0]
@@ -442,6 +469,27 @@ def extract_fields(results, best_angle):
     if not extracted_text:
         raise HTTPException(status_code=400, detail="Could not extract text from image")
     
+    # TRY: Use UltimateICExtractor first (handles Chinese character filtering)
+    try:
+        extractor = UltimateICExtractor()
+        extracted_data = extractor.extract(extracted_text)
+        
+        # Build response with extracted data
+        return {
+            "ic_number": extracted_data.get('ic_number', ''),
+            "name": extracted_data.get('name', ''),
+            "gender": extracted_data.get('gender', ''),
+            "religion": extracted_data.get('religion', ''),
+            "address": extracted_data.get('address', ''),
+            "postcode_validation": None,
+            "document_type": "Malaysia Identity Card (MyKad)",
+            "orientation_angle": best_angle,
+            "raw_ocr_text": extracted_text
+        }
+    except Exception as e:
+        logger.warning(f"UltimateICExtractor failed, falling back to legacy extractor: {e}")
+    
+    # FALLBACK: Original extraction logic
     # Apply OCR corrections
     ocr_corrections = [
         (r'L{2,}OT', 'LOT'),
